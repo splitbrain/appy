@@ -67,13 +67,6 @@ func buildMetadataLayout(metadata *appimage.Metadata, w fyne.Window) fyne.Canvas
 	// Name (using RichText for larger text)
 	nameLabel := widget.NewRichTextFromMarkdown("# " + metadata.Name)
 
-	// Description
-	descriptionLabel := widget.NewLabel(metadata.Description)
-	descriptionLabel.Wrapping = fyne.TextWrapWord
-	if metadata.Description == "" {
-		descriptionLabel.SetText("No description available")
-	}
-
 	// Categories
 	categoriesStr := strings.Join(metadata.Categories, ", ")
 	categoriesLabel := widget.NewLabel(fmt.Sprintf("Categories: %s", categoriesStr))
@@ -86,15 +79,26 @@ func buildMetadataLayout(metadata *appimage.Metadata, w fyne.Window) fyne.Canvas
 	// Layout
 	iconContainer := container.NewCenter(iconWidget)
 
-	infoContainer := container.NewVBox(
+	// Build info container, conditionally including description
+	infoItems := []fyne.CanvasObject{
 		nameLabel,
 		widget.NewSeparator(),
-		descriptionLabel,
-		widget.NewLabel(""),
+	}
+
+	// Only add description if it exists
+	if metadata.Description != "" {
+		descriptionLabel := widget.NewLabel(metadata.Description)
+		descriptionLabel.Wrapping = fyne.TextWrapWord
+		infoItems = append(infoItems, descriptionLabel, widget.NewLabel(""))
+	}
+
+	infoItems = append(infoItems,
 		categoriesLabel,
 		widget.NewLabel(""),
 		pathLabel,
 	)
+
+	infoContainer := container.NewVBox(infoItems...)
 
 	// Check for existing installation
 	sanitizedName := installer.SanitizeAppName(metadata.Name)

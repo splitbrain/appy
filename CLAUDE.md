@@ -32,9 +32,13 @@ go build -o appy ./cmd/appy
 ```bash
 # Run tests (automatically downloads test AppImage if missing)
 make test
+```
 
-# Or directly with Go
-go test -v ./...
+### Screenshots
+
+```bash
+# take a screenshot of the running application
+import -window "$(xdotool search --name '^Appy - ')" screenshot.png
 ```
 
 ### Dependencies
