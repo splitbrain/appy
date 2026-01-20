@@ -232,5 +232,9 @@ func handleUninstall(w fyne.Window, metadata *appimage.Metadata, updateButton fu
 
 // showSuccessDialog displays success message after install/uninstall
 func showSuccessDialog(w fyne.Window, message string) {
-	dialog.ShowInformation("Success", message, w)
+	d := dialog.NewInformation("Success", message, w)
+	d.SetOnClosed(func() {
+		fyne.CurrentApp().Quit()
+	})
+	d.Show()
 }
