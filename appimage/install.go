@@ -75,30 +75,10 @@ func Install(metadata *Metadata) error {
 	if err := os.MkdirAll(filepath.Dir(targetAppImagePath), 0755); err != nil {
 		return &InstallError{AppName: sanitizedName, Stage: "mkdir", Err: err}
 	}
-
-	srcFile, err := os.Open(metadata.FilePath)
-	if err != nil {
-		return &InstallError{AppName: sanitizedName, Stage: "copy", Err: err}
-	}
-	defer srcFile.Close()
-
-	dstFile, err := os.Create(targetAppImagePath)
-	if err != nil {
+	if err := copyFile(metadata.FilePath, targetAppImagePath, 0755); err != nil {
 		return &InstallError{AppName: sanitizedName, Stage: "copy", Err: err}
 	}
 	createdFiles = append(createdFiles, targetAppImagePath)
-
-	_, err = io.Copy(dstFile, srcFile)
-	dstFile.Close()
-	if err != nil {
-		cleanup()
-		return &InstallError{AppName: sanitizedName, Stage: "copy", Err: err}
-	}
-
-	if err := os.Chmod(targetAppImagePath, 0755); err != nil {
-		cleanup()
-		return &InstallError{AppName: sanitizedName, Stage: "permissions", Err: err}
-	}
 
 	// Handle icon installation
 	var targetIconPath string
@@ -169,4 +149,21 @@ func Uninstall(appName string) error {
 	}
 
 	return nil
+}
+
+func copyFile(src, dst string, perm os.FileMode) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	return err
 }
