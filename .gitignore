@@ -1,0 +1,16 @@
+# Binaries
+/appy
+/test_parse
+/test_parse_debug
+
+# Test files
+*.AppImage
+test_parse.go
+test_parse_debug.go
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
