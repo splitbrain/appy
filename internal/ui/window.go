@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"appy/internal/appimage"
@@ -71,10 +72,9 @@ func buildMetadataLayout(metadata *appimage.Metadata, w fyne.Window) fyne.Canvas
 	categoriesStr := strings.Join(metadata.Categories, ", ")
 	categoriesLabel := widget.NewLabel(fmt.Sprintf("Categories: %s", categoriesStr))
 
-	// File path
-	pathLabel := widget.NewLabel(fmt.Sprintf("File: %s", metadata.FilePath))
+	// Filename
+	pathLabel := widget.NewLabel(filepath.Base(metadata.FilePath))
 	pathLabel.Wrapping = fyne.TextWrapWord
-	pathLabel.TextStyle = fyne.TextStyle{Italic: true}
 
 	// Layout
 	iconContainer := container.NewCenter(iconWidget)
