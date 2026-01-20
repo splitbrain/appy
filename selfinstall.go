@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"appy/appimage"
@@ -16,7 +17,7 @@ Exec=%s %%f
 Icon=application-x-appimage
 Terminal=false
 Categories=Utility;
-MimeType=application/vnd.appimage;application/x-appimage;
+MimeType=application/x-iso9660-appimage;application/vnd.appimage;application/x-appimage;
 `
 
 func installAppy() error {
@@ -50,15 +51,26 @@ func installAppy() error {
 
 	// Create desktop file directory
 	if err := os.MkdirAll(filepath.Dir(targetDesktopPath), 0755); err != nil {
-		os.Remove(targetBinaryPath)
 		return fmt.Errorf("cannot create applications directory: %w", err)
 	}
 
 	// Write desktop file
 	desktopContent := fmt.Sprintf(desktopFileContent, targetBinaryPath)
 	if err := os.WriteFile(targetDesktopPath, []byte(desktopContent), 0644); err != nil {
-		os.Remove(targetBinaryPath)
+		_ = os.Remove(targetBinaryPath)
 		return fmt.Errorf("cannot write desktop file: %w", err)
+	}
+
+	// Update desktop database (ignore errors - command may not exist)
+	_ = exec.Command("update-desktop-database", filepath.Dir(targetDesktopPath)).Run()
+
+	// Set as default handler for AppImage MIME types
+	for _, mimeType := range []string{
+		"application/x-iso9660-appimage",
+		"application/vnd.appimage",
+		"application/x-appimage",
+	} {
+		_ = exec.Command("xdg-mime", "default", "appy.desktop", mimeType).Run()
 	}
 
 	return nil
@@ -84,7 +96,10 @@ func uninstallAppy() error {
 	}
 
 	// Remove desktop file (ignore error if it doesn't exist)
-	os.Remove(targetDesktopPath)
+	_ = os.Remove(targetDesktopPath)
+
+	// Update desktop database (ignore errors - command may not exist)
+	_ = exec.Command("update-desktop-database", filepath.Dir(targetDesktopPath)).Run()
 
 	return nil
 }
