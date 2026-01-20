@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Update this file automatically when making changes to the codebase.**
+
 ## Git Commit Guidelines
 
 - **Do NOT add Claude attributions** to commit messages or Co-Authored-By lines
@@ -26,6 +28,10 @@ go build -o appy .
 ```bash
 ./appy <path-to-appimage-file>
 # Example: ./appy test.AppImage
+
+# Self-installation (registers as default AppImage handler)
+./appy --install
+./appy --uninstall
 ```
 
 This is a GUI application, you will need to take a screenshot to see the output. You need to kill the application manually after viewing.
@@ -36,11 +42,13 @@ This is a GUI application, you will need to take a screenshot to see the output.
 make test
 ```
 
+Update and extend the tests when making changes to the codebase.
+
 ### Screenshots
 
 ```bash
 # take a screenshot of the running application
-import -window "$(xdotool search --name '^Appy - ')" screenshot.png
+import -window "$(xdotool search --name '^Appy - ')" /tmp/screenshot.png
 ```
 
 ### Dependencies
@@ -54,6 +62,7 @@ go mod tidy
 ### Package Structure
 
 - `main.go`: Entry point, handles CLI arguments and orchestrates parsing/display
+- `selfinstall.go`: Self-installation to register as default AppImage handler
 - `ui.go`: Fyne-based GUI, metadata display window, install/uninstall UI, dialogs
 - `appimage/`: AppImage parsing and installation logic
   - `appimage.go`: Core parsing, SquashFS detection and mounting, type definitions
@@ -121,6 +130,19 @@ type Metadata struct {
    - Shows original filename of currently installed version
    - Confirmation dialogs for overwrite and uninstall
    - Quits application after successful install/uninstall
+
+### Self-Installation Flow
+
+The `--install` and `--uninstall` flags allow Appy to register itself as the default AppImage handler:
+
+1. **Install** (selfinstall.go):
+   - Copies current executable to `~/Applications/appy`
+   - Creates `~/.local/share/applications/appy.desktop` with MIME type associations
+   - Registers for `application/x-iso9660-appimage`, `application/vnd.appimage`, and `application/x-appimage` MIME types
+   - Enables double-click to open AppImages in file managers
+2. **Uninstall** (selfinstall.go):
+   - Removes `~/Applications/appy` binary
+   - Removes desktop file
 
 ### Key Dependencies
 
