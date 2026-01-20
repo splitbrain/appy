@@ -31,15 +31,6 @@ func parseDesktop(data []byte) (*Metadata, error) {
 	// Extract Description (Comment field)
 	metadata.Description = getDesktopValue(section, "Comment")
 
-	// Extract Version (prefer X-AppImage-Version, fallback to Version)
-	metadata.Version = getDesktopValue(section, "X-AppImage-Version")
-	if metadata.Version == "" {
-		metadata.Version = getDesktopValue(section, "Version")
-	}
-	if metadata.Version == "" {
-		metadata.Version = "Unknown"
-	}
-
 	// Extract Categories (semicolon-separated)
 	categoriesStr := getDesktopValue(section, "Categories")
 	if categoriesStr != "" {

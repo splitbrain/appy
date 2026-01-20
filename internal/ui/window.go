@@ -73,9 +73,6 @@ func buildMetadataLayout(metadata *appimage.Metadata) fyne.CanvasObject {
 		descriptionLabel.SetText("No description available")
 	}
 
-	// Version
-	versionLabel := widget.NewLabel(fmt.Sprintf("Version: %s", metadata.Version))
-
 	// Categories
 	categoriesStr := strings.Join(metadata.Categories, ", ")
 	categoriesLabel := widget.NewLabel(fmt.Sprintf("Categories: %s", categoriesStr))
@@ -93,7 +90,6 @@ func buildMetadataLayout(metadata *appimage.Metadata) fyne.CanvasObject {
 		widget.NewSeparator(),
 		descriptionLabel,
 		widget.NewLabel(""),
-		versionLabel,
 		categoriesLabel,
 		widget.NewLabel(""),
 		pathLabel,

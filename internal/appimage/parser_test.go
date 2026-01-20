@@ -36,7 +36,6 @@ func TestParse(t *testing.T) {
 	t.Logf("Parsed metadata:")
 	t.Logf("  Name: %s", metadata.Name)
 	t.Logf("  Description: %s", metadata.Description)
-	t.Logf("  Version: %s", metadata.Version)
 	t.Logf("  Categories: %v", metadata.Categories)
 	if metadata.Icon != nil {
 		t.Logf("  Icon Format: %s", metadata.Icon.Format)

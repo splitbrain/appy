@@ -19,7 +19,6 @@ func TestParseDesktop(t *testing.T) {
 Name=Test App
 Comment=A test application
 Icon=testapp
-Version=1.0.0
 Categories=Utility;Development;`,
 			wantErr: nil,
 			check: func(t *testing.T, m *Metadata) {
@@ -28,9 +27,6 @@ Categories=Utility;Development;`,
 				}
 				if m.Description != "A test application" {
 					t.Errorf("Description = %q, want %q", m.Description, "A test application")
-				}
-				if m.Version != "1.0.0" {
-					t.Errorf("Version = %q, want %q", m.Version, "1.0.0")
 				}
 				// Categories should have both Utility and Development
 				if len(m.Categories) < 1 {
@@ -49,9 +45,6 @@ Name=Minimal`,
 				if m.Name != "Minimal" {
 					t.Errorf("Name = %q, want %q", m.Name, "Minimal")
 				}
-				if m.Version != "Unknown" {
-					t.Errorf("Version = %q, want %q", m.Version, "Unknown")
-				}
 				if len(m.Categories) != 1 || m.Categories[0] != "Utility" {
 					t.Errorf("Categories = %v, want [Utility]", m.Categories)
 				}
@@ -68,19 +61,6 @@ Comment=No name field`,
 			data: `Name=No Section
 Comment=Missing section`,
 			wantErr: ErrInvalidFormat,
-		},
-		{
-			name: "X-AppImage-Version preferred",
-			data: `[Desktop Entry]
-Name=Version Test
-Version=1.0.0
-X-AppImage-Version=2.0.0`,
-			wantErr: nil,
-			check: func(t *testing.T, m *Metadata) {
-				if m.Version != "2.0.0" {
-					t.Errorf("Version = %q, want %q (X-AppImage-Version should be preferred)", m.Version, "2.0.0")
-				}
-			},
 		},
 	}
 

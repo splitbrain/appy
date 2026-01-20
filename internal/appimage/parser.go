@@ -2,7 +2,6 @@ package appimage
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -40,7 +39,6 @@ func init() {
 type Metadata struct {
 	Name        string
 	Description string
-	Version     string
 	Categories  []string
 	Icon        *IconData
 	FilePath    string
@@ -197,9 +195,6 @@ func (p *Parser) findSquashfsOffset() (int64, error) {
 		return 0, ErrNoSquashFS
 	}
 
-	// Debug: print candidates
-	fmt.Printf("DEBUG: Found %d candidates: %v\n", len(candidates), candidates)
-
 	// Return the last candidate (usually the correct one)
 	// We'll verify it works when we try to open it
 	return candidates[len(candidates)-1], nil
@@ -217,14 +212,11 @@ func (p *Parser) openSquashfs() error {
 	sectionReader := io.NewSectionReader(p.file, p.squashfsOffset, size)
 
 	// Initialize squashfs reader
-	fmt.Printf("DEBUG: Opening squashfs at offset %d, size %d...\n", p.squashfsOffset, size)
 	sqfs, err := squashfs.New(sectionReader)
 	if err != nil {
-		fmt.Printf("DEBUG: Error opening squashfs: %v\n", err)
 		return ErrCorrupted
 	}
 
-	fmt.Printf("DEBUG: Squashfs opened successfully\n")
 	p.sqfs = sqfs
 	return nil
 }
@@ -232,21 +224,16 @@ func (p *Parser) openSquashfs() error {
 // parseDesktopFile finds and parses the .desktop file
 func (p *Parser) parseDesktopFile() (*Metadata, error) {
 	// Find .desktop file in root directory
-	fmt.Printf("DEBUG: Finding .desktop file...\n")
 	desktopFileName, err := p.findDesktopFile()
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("DEBUG: Found .desktop file: %s\n", desktopFileName)
 
 	// Read desktop file contents
-	fmt.Printf("DEBUG: About to read file...\n")
 	desktopData, err := fs.ReadFile(p.sqfs, desktopFileName)
 	if err != nil {
-		fmt.Printf("DEBUG: Error reading file: %v\n", err)
 		return nil, err
 	}
-	fmt.Printf("DEBUG: Read .desktop file (%d bytes)\n", len(desktopData))
 
 	// Parse desktop file and extract metadata
 	return parseDesktop(desktopData)
