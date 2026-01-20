@@ -12,6 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -29,14 +32,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
       - name: Build
-        run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o appy-linux-amd64 .
+        run: go build -o appy-linux-amd64 .
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
