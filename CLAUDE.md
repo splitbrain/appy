@@ -15,7 +15,10 @@ This is a Go application that parses AppImage files (Type 2) and displays their 
 
 ### Build
 ```bash
-# Build with XZ and ZSTD compression support
+# Using Make
+make build
+
+# Or directly with Go
 go build -o appy ./cmd/appy
 ```
 
@@ -23,6 +26,15 @@ go build -o appy ./cmd/appy
 ```bash
 ./appy <path-to-appimage-file>
 # Example: ./appy test.AppImage
+```
+
+### Test
+```bash
+# Run tests (automatically downloads test AppImage if missing)
+make test
+
+# Or directly with Go
+go test -v ./...
 ```
 
 ### Dependencies
