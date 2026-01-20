@@ -33,5 +33,5 @@ func main() {
 	}
 
 	// Show metadata in GUI
-	showMetadata(metadata)
+	showMainWindow(metadata)
 }

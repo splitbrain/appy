@@ -16,41 +16,19 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// showMetadata displays the AppImage metadata in a GUI window
-func showMetadata(metadata *appimage.Metadata) {
+// showMainWindow displays the AppImage metadata in a GUI window
+func showMainWindow(metadata *appimage.Metadata) {
 	a := app.New()
 	w := a.NewWindow("Appy - " + metadata.Name)
 
-	content := buildMetadataLayout(metadata, w)
+	content := buildMainWindowLayout(metadata, w)
 	w.SetContent(content)
 	w.Resize(fyne.NewSize(500, 450))
 	w.ShowAndRun()
 }
 
-// showError displays an error dialog
-func showError(err error) {
-	a := app.New()
-	w := a.NewWindow("Error")
-
-	errorMsg := err.Error()
-	label := widget.NewLabel(errorMsg)
-	label.Wrapping = fyne.TextWrapWord
-
-	content := container.NewVBox(
-		widget.NewIcon(theme.ErrorIcon()),
-		label,
-		widget.NewButton("OK", func() {
-			a.Quit()
-		}),
-	)
-
-	w.SetContent(content)
-	w.Resize(fyne.NewSize(400, 200))
-	w.ShowAndRun()
-}
-
-// buildMetadataLayout creates the layout for displaying metadata
-func buildMetadataLayout(metadata *appimage.Metadata, w fyne.Window) fyne.CanvasObject {
+// buildMainWindowLayout creates the layout for displaying metadata
+func buildMainWindowLayout(metadata *appimage.Metadata, w fyne.Window) fyne.CanvasObject {
 	// Icon
 	var iconWidget fyne.CanvasObject
 	if metadata.Icon != nil && len(metadata.Icon.Data) > 0 {
@@ -99,44 +77,68 @@ func buildMetadataLayout(metadata *appimage.Metadata, w fyne.Window) fyne.Canvas
 
 	infoContainer := container.NewVBox(infoItems...)
 
-	// Check for existing installation
-	sanitizedName := appimage.SanitizeAppName(metadata.Name)
+	// Add overwrite warning if needed
+	if warning := buildOverwriteWarning(metadata); warning != nil {
+		infoContainer.Add(warning)
+	}
+
+	// Create action button
+	buttonContainer := buildActionButton(metadata, w)
+
+	mainContainer := container.NewBorder(
+		iconContainer,
+		buttonContainer,
+		nil,
+		nil,
+		container.NewPadded(infoContainer),
+	)
+
+	return mainContainer
+}
+
+// buildOverwriteWarning creates a warning box if installation will overwrite an existing version
+func buildOverwriteWarning(metadata *appimage.Metadata) fyne.CanvasObject {
 	isInstalledPath := appimage.IsInstalledPath(metadata.Name, metadata.FilePath)
 	willOverwrite := !isInstalledPath && appimage.IsInstalled(metadata.Name)
 
-	// Show warning if installation will overwrite
-	if willOverwrite {
-		info, err := appimage.GetInstalledInfo(sanitizedName)
-		if err == nil {
-			warningBox := container.NewVBox(
-				widget.NewLabel(""),
-				widget.NewSeparator(),
-			)
-
-			// Warning header with icon
-			warningHeader := container.NewHBox(
-				widget.NewIcon(theme.WarningIcon()),
-				widget.NewLabel("Installation will overwrite existing version"),
-			)
-			warningBox.Add(warningHeader)
-
-			// Show original filename if available
-			if info.OriginalFilename != "" {
-				originalLabel := widget.NewLabel(fmt.Sprintf("Currently installed: %s", info.OriginalFilename))
-				originalLabel.TextStyle = fyne.TextStyle{Italic: true}
-				warningBox.Add(originalLabel)
-			}
-
-			infoContainer.Add(warningBox)
-		}
+	if !willOverwrite {
+		return nil
 	}
 
-	// Install/Uninstall button
+	sanitizedName := appimage.SanitizeAppName(metadata.Name)
+	info, err := appimage.GetInstalledInfo(sanitizedName)
+	if err != nil {
+		return nil
+	}
+
+	warningBox := container.NewVBox(
+		widget.NewLabel(""),
+		widget.NewSeparator(),
+	)
+
+	// Warning header with icon
+	warningHeader := container.NewHBox(
+		widget.NewIcon(theme.WarningIcon()),
+		widget.NewLabel("Installation will overwrite existing version"),
+	)
+	warningBox.Add(warningHeader)
+
+	// Show original filename if available
+	if info.OriginalFilename != "" {
+		originalLabel := widget.NewLabel(fmt.Sprintf("Currently installed: %s", info.OriginalFilename))
+		originalLabel.TextStyle = fyne.TextStyle{Italic: true}
+		warningBox.Add(originalLabel)
+	}
+
+	return warningBox
+}
+
+// buildActionButton creates the Install/Uninstall button with its update logic
+func buildActionButton(metadata *appimage.Metadata, w fyne.Window) fyne.CanvasObject {
 	var actionButton *widget.Button
 	var updateButton func()
 
 	updateButton = func() {
-		// Check if the current file is the installed version
 		isInstalledPath := appimage.IsInstalledPath(metadata.Name, metadata.FilePath)
 		if isInstalledPath {
 			actionButton.SetText("Uninstall")
@@ -155,30 +157,45 @@ func buildMetadataLayout(metadata *appimage.Metadata, w fyne.Window) fyne.Canvas
 	actionButton = widget.NewButton("", func() {})
 	updateButton()
 
-	buttonContainer := container.NewCenter(actionButton)
-
-	mainContainer := container.NewBorder(
-		iconContainer,
-		buttonContainer,
-		nil,
-		nil,
-		container.NewPadded(infoContainer),
-	)
-
-	return mainContainer
+	return container.NewCenter(actionButton)
 }
 
-// handleInstall performs installation with confirmation
+// showError displays an error dialog
+func showError(err error) {
+	a := app.New()
+	w := a.NewWindow("Error")
+
+	errorMsg := err.Error()
+	label := widget.NewLabel(errorMsg)
+	label.Wrapping = fyne.TextWrapWord
+
+	content := container.NewVBox(
+		widget.NewIcon(theme.ErrorIcon()),
+		label,
+		widget.NewButton("OK", func() {
+			a.Quit()
+		}),
+	)
+
+	w.SetContent(content)
+	w.Resize(fyne.NewSize(400, 200))
+	w.ShowAndRun()
+}
+
+// handleInstall performs installation with confirmation if overwriting
 func handleInstall(w fyne.Window, metadata *appimage.Metadata, updateButton func()) {
-	// Check if already installed (will overwrite)
 	if appimage.IsInstalled(metadata.Name) {
-		// Show simple confirmation for overwrite
 		dialog.ShowConfirm(
 			"Confirm Installation",
 			"This will overwrite the existing installation. Continue?",
 			func(confirmed bool) {
 				if confirmed {
-					performInstall(w, metadata, updateButton)
+					if err := appimage.Install(metadata); err != nil {
+						dialog.ShowError(err, w)
+						return
+					}
+					showSuccessDialog(w, "Application installed successfully!")
+					updateButton()
 				}
 			},
 			w,
@@ -186,18 +203,10 @@ func handleInstall(w fyne.Window, metadata *appimage.Metadata, updateButton func
 		return
 	}
 
-	// Proceed with installation
-	performInstall(w, metadata, updateButton)
-}
-
-// performInstall executes the installation
-func performInstall(w fyne.Window, metadata *appimage.Metadata, updateButton func()) {
-	err := appimage.Install(metadata)
-	if err != nil {
+	if err := appimage.Install(metadata); err != nil {
 		dialog.ShowError(err, w)
 		return
 	}
-
 	showSuccessDialog(w, "Application installed successfully!")
 	updateButton()
 }
