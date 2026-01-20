@@ -19,7 +19,7 @@ import (
 // ShowMetadata displays the AppImage metadata in a GUI window
 func ShowMetadata(metadata *appimage.Metadata) {
 	a := app.New()
-	w := a.NewWindow("AppImage Info - " + metadata.Name)
+	w := a.NewWindow("Appy - " + metadata.Name)
 
 	content := buildMetadataLayout(metadata, w)
 	w.SetContent(content)
