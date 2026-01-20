@@ -75,7 +75,7 @@ func Install(metadata *Metadata) error {
 	if err := os.MkdirAll(filepath.Dir(targetAppImagePath), 0755); err != nil {
 		return &InstallError{AppName: sanitizedName, Stage: "mkdir", Err: err}
 	}
-	if err := copyFile(metadata.FilePath, targetAppImagePath, 0755); err != nil {
+	if err := CopyFile(metadata.FilePath, targetAppImagePath, 0755); err != nil {
 		return &InstallError{AppName: sanitizedName, Stage: "copy", Err: err}
 	}
 	createdFiles = append(createdFiles, targetAppImagePath)
@@ -151,7 +151,7 @@ func Uninstall(appName string) error {
 	return nil
 }
 
-func copyFile(src, dst string, perm os.FileMode) error {
+func CopyFile(src, dst string, perm os.FileMode) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
