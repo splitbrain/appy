@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -16,32 +17,13 @@ type InstalledInfo struct {
 	OriginalFilename string
 }
 
+var nonAlphanumeric = regexp.MustCompile(`[^a-z0-9]+`)
+
 // SanitizeAppName removes spaces and special characters from app name
 func SanitizeAppName(name string) string {
-	// Convert to lowercase
 	result := strings.ToLower(name)
-
-	// Remove/replace special characters
-	// Keep alphanumeric, hyphen, underscore
-	// Replace spaces with hyphens
-	result = strings.Map(func(r rune) rune {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
-			return r
-		}
-		if r == ' ' || r == '-' || r == '_' {
-			return '-'
-		}
-		return -1 // Remove character
-	}, result)
-
-	// Collapse multiple consecutive hyphens into one
-	for strings.Contains(result, "--") {
-		result = strings.ReplaceAll(result, "--", "-")
-	}
-
-	// Trim hyphens from start/end
+	result = nonAlphanumeric.ReplaceAllString(result, "-")
 	result = strings.Trim(result, "-")
-
 	return result
 }
 

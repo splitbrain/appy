@@ -17,7 +17,7 @@ func TestSanitizeAppName(t *testing.T) {
 		{"Simple", "simple"},
 		{"___Test___", "test"},
 		{"Multiple   Spaces", "multiple-spaces"},
-		{"Special!@#$%Chars", "specialchars"},
+		{"Special!@#$%Chars", "special-chars"},
 	}
 
 	for _, tt := range tests {
