@@ -37,11 +37,12 @@ func init() {
 
 // Metadata contains extracted AppImage metadata
 type Metadata struct {
-	Name        string
-	Description string
-	Categories  []string
-	Icon        *IconData
-	FilePath    string
+	Name               string
+	Description        string
+	Categories         []string
+	Icon               *IconData
+	FilePath           string
+	DesktopFileContent []byte
 }
 
 // IconData contains icon image data
@@ -236,7 +237,15 @@ func (p *Parser) parseDesktopFile() (*Metadata, error) {
 	}
 
 	// Parse desktop file and extract metadata
-	return parseDesktop(desktopData)
+	metadata, err := parseDesktop(desktopData)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store raw desktop file content for installation
+	metadata.DesktopFileContent = desktopData
+
+	return metadata, nil
 }
 
 // findDesktopFile locates the .desktop file in the root directory
