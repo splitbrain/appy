@@ -1,7 +1,7 @@
 .PHONY: build test
 
 build:
-	go build -o appy ./cmd/appy
+	go build -o appy .
 
 testdata/test.AppImage:
 	@echo "Downloading test.AppImage..."

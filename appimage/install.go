@@ -1,12 +1,10 @@
-package installer
+package appimage
 
 import (
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"appy/internal/appimage"
 )
 
 // InstalledInfo contains information about an installed application
@@ -131,7 +129,7 @@ func GetInstalledInfo(appName string) (*InstalledInfo, error) {
 }
 
 // Install copies the AppImage and creates desktop entry
-func Install(metadata *appimage.Metadata) error {
+func Install(metadata *Metadata) error {
 	if metadata == nil {
 		return &InstallError{Stage: "validation", Err: os.ErrInvalid}
 	}

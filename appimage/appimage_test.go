@@ -7,7 +7,7 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	testAppImage := filepath.Join("..", "..", "testdata", "test.AppImage")
+	testAppImage := filepath.Join("..", "testdata", "test.AppImage")
 
 	// Check if test file exists
 	if _, err := os.Stat(testAppImage); os.IsNotExist(err) {

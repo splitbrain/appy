@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"appy/internal/appimage"
-	"appy/internal/ui"
+	"appy/appimage"
 )
 
 func main() {
@@ -29,10 +28,10 @@ func main() {
 	metadata, err := appimage.Parse(appImagePath)
 	if err != nil {
 		// Show error in GUI
-		ui.ShowError(err)
+		showError(err)
 		os.Exit(1)
 	}
 
 	// Show metadata in GUI
-	ui.ShowMetadata(metadata)
+	showMetadata(metadata)
 }
