@@ -15,10 +15,7 @@ This is a Go application that parses AppImage files (Type 2) and displays their 
 
 ### Build
 ```bash
-# Build with XZ compression support (recommended)
-go build -tags xz -o appy ./cmd/appy
-
-# Build without XZ support (falls back to other compression methods)
+# Build with XZ and ZSTD compression support
 go build -o appy ./cmd/appy
 ```
 
@@ -76,19 +73,21 @@ type Metadata struct {
 
 ### Key Dependencies
 
-- `github.com/KarpelesLab/squashfs`: SquashFS filesystem reading with XZ support
+- `github.com/KarpelesLab/squashfs`: SquashFS filesystem reading
 - `github.com/ulikunitz/xz`: XZ decompression for SquashFS
+- `github.com/klauspost/compress/zstd`: ZSTD decompression for SquashFS
 - `fyne.io/fyne/v2`: Cross-platform GUI framework
 - `gopkg.in/ini.v1`: INI file parsing for .desktop files
 
 ### Important Implementation Details
 
 - Only AppImage Type 2 is supported (Type 1 returns ErrUnsupportedType)
+- Supports both XZ and ZSTD compression for SquashFS filesystems (registered in parser.go:14-34)
 - Desktop file parsing prefers non-localized keys but falls back to localized variants (e.g., Name[de])
 - Icon search prioritizes larger icon sizes (256x256 > 128x128 > 64x64)
 - Image format detection uses magic bytes first, then falls back to file extension
 - SquashFS offset search returns the last candidate found (typically the correct one for Type 2 AppImages)
-- Debug output is currently present in parser.go (lines 172, 208-216, 223-237) - remove these fmt.Printf calls in production
+- Debug output is currently present in parser.go (lines 189, 208-216, 223-237) - remove these fmt.Printf calls in production
 
 ### Error Handling
 

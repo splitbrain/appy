@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/KarpelesLab/squashfs"
+	"github.com/klauspost/compress/zstd"
 	"github.com/ulikunitz/xz"
 )
 
@@ -16,6 +17,17 @@ func init() {
 	squashfs.RegisterDecompressor(squashfs.XZ,
 		squashfs.MakeDecompressorErr(func(r io.Reader) (io.ReadCloser, error) {
 			rc, err := xz.NewReader(r)
+			if err != nil {
+				return nil, err
+			}
+			return io.NopCloser(rc), nil
+		}),
+	)
+
+	// Register ZSTD decompressor for SquashFS
+	squashfs.RegisterDecompressor(squashfs.ZSTD,
+		squashfs.MakeDecompressorErr(func(r io.Reader) (io.ReadCloser, error) {
+			rc, err := zstd.NewReader(r)
 			if err != nil {
 				return nil, err
 			}
