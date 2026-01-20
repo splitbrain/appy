@@ -99,35 +99,26 @@ func buildMainWindowLayout(metadata *appimage.Metadata, w fyne.Window) fyne.Canv
 // buildOverwriteWarning creates a warning box if installation will overwrite an existing version
 func buildOverwriteWarning(metadata *appimage.Metadata) fyne.CanvasObject {
 	isInstalledPath := appimage.IsInstalledPath(metadata.Name, metadata.FilePath)
-	willOverwrite := !isInstalledPath && appimage.IsInstalled(metadata.Name)
-
-	if !willOverwrite {
-		return nil
-	}
-
-	sanitizedName := appimage.SanitizeAppName(metadata.Name)
-	info, err := appimage.GetInstalledInfo(sanitizedName)
-	if err != nil {
+	if isInstalledPath || !appimage.IsInstalled(metadata.Name) {
 		return nil
 	}
 
 	warningBox := container.NewVBox(
 		widget.NewLabel(""),
 		widget.NewSeparator(),
+		container.NewHBox(
+			widget.NewIcon(theme.WarningIcon()),
+			widget.NewLabel("Installation will overwrite existing version"),
+		),
 	)
 
-	// Warning header with icon
-	warningHeader := container.NewHBox(
-		widget.NewIcon(theme.WarningIcon()),
-		widget.NewLabel("Installation will overwrite existing version"),
-	)
-	warningBox.Add(warningHeader)
-
-	// Show original filename if available
-	if info.OriginalFilename != "" {
-		originalLabel := widget.NewLabel(fmt.Sprintf("Currently installed: %s", info.OriginalFilename))
-		originalLabel.TextStyle = fyne.TextStyle{Italic: true}
-		warningBox.Add(originalLabel)
+	sanitizedName := appimage.SanitizeAppName(metadata.Name)
+	if desktopPath, err := appimage.GetDesktopFilePath(sanitizedName); err == nil {
+		if originalFilename, err := appimage.GetOriginalFilename(desktopPath); err == nil && originalFilename != "" {
+			originalLabel := widget.NewLabel(fmt.Sprintf("Currently installed: %s", originalFilename))
+			originalLabel.TextStyle = fyne.TextStyle{Italic: true}
+			warningBox.Add(originalLabel)
+		}
 	}
 
 	return warningBox

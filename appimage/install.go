@@ -8,16 +8,8 @@ import (
 	"strings"
 )
 
-// InstalledInfo contains information about an installed application
-type InstalledInfo struct {
-	AppName          string
-	InstalledPath    string
-	DesktopFilePath  string
-	IconPath         string
-	OriginalFilename string
-}
-
 var nonAlphanumeric = regexp.MustCompile(`[^a-z0-9]+`)
+var iconExtensions = []string{".png", ".svg", ".jpg", ".xpm"}
 
 // SanitizeAppName removes spaces and special characters from app name
 func SanitizeAppName(name string) string {
@@ -29,85 +21,25 @@ func SanitizeAppName(name string) string {
 
 // IsInstalled checks if an app is currently installed
 func IsInstalled(appName string) bool {
-	sanitizedName := SanitizeAppName(appName)
-	appImagePath, err := GetInstalledAppImagePath(sanitizedName)
+	appImagePath, err := GetInstalledAppImagePath(SanitizeAppName(appName))
 	if err != nil {
 		return false
 	}
-
-	// Check if the AppImage exists
-	if _, err := os.Stat(appImagePath); os.IsNotExist(err) {
-		return false
-	}
-
-	return true
+	_, err = os.Stat(appImagePath)
+	return err == nil
 }
 
 // IsInstalledPath checks if the given file path is the installed version
 func IsInstalledPath(appName string, filePath string) bool {
-	sanitizedName := SanitizeAppName(appName)
-	appImagePath, err := GetInstalledAppImagePath(sanitizedName)
+	appImagePath, err := GetInstalledAppImagePath(SanitizeAppName(appName))
 	if err != nil {
 		return false
 	}
-
-	// Resolve both paths to absolute paths for comparison
 	absFilePath, err := filepath.Abs(filePath)
 	if err != nil {
 		return false
 	}
-
-	absInstalledPath, err := filepath.Abs(appImagePath)
-	if err != nil {
-		return false
-	}
-
-	return absFilePath == absInstalledPath
-}
-
-// GetInstalledInfo retrieves information about an installed app
-func GetInstalledInfo(appName string) (*InstalledInfo, error) {
-	sanitizedName := SanitizeAppName(appName)
-
-	appImagePath, err := GetInstalledAppImagePath(sanitizedName)
-	if err != nil {
-		return nil, err
-	}
-
-	desktopFilePath, err := GetDesktopFilePath(sanitizedName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if installed
-	if _, err := os.Stat(appImagePath); os.IsNotExist(err) {
-		return nil, ErrNotInstalled
-	}
-
-	// Try to get original filename from desktop file
-	originalFilename, _ := GetOriginalFilename(desktopFilePath)
-
-	// Try to find icon path
-	iconPath := ""
-	iconsDir, err := GetIconsPath()
-	if err == nil {
-		// Check for common extensions
-		for _, ext := range []string{".png", ".svg", ".jpg", ".xpm"} {
-			path := filepath.Join(iconsDir, sanitizedName+ext)
-			if _, err := os.Stat(path); err == nil {
-				iconPath = path
-				break
-			}
-		}
-	}
-
-	return &InstalledInfo{
-		AppName:          sanitizedName,
-		InstalledPath:    appImagePath,
-		DesktopFilePath:  desktopFilePath,
-		IconPath:         iconPath,
-		OriginalFilename: originalFilename,
-	}, nil
+	return absFilePath == appImagePath
 }
 
 // Install copies the AppImage and creates desktop entry
@@ -118,27 +50,7 @@ func Install(metadata *Metadata) error {
 
 	sanitizedName := SanitizeAppName(metadata.Name)
 	if sanitizedName == "" {
-		return &InstallError{
-			AppName: metadata.Name,
-			Stage:   "validation",
-			Err:     os.ErrInvalid,
-		}
-	}
-
-	// Get paths
-	appsDir, err := GetApplicationsPath()
-	if err != nil {
-		return &InstallError{AppName: sanitizedName, Stage: "paths", Err: err}
-	}
-
-	desktopDir, err := GetDesktopFilesPath()
-	if err != nil {
-		return &InstallError{AppName: sanitizedName, Stage: "paths", Err: err}
-	}
-
-	iconsDir, err := GetIconsPath()
-	if err != nil {
-		return &InstallError{AppName: sanitizedName, Stage: "paths", Err: err}
+		return &InstallError{AppName: metadata.Name, Stage: "validation", Err: os.ErrInvalid}
 	}
 
 	targetAppImagePath, err := GetInstalledAppImagePath(sanitizedName)
@@ -151,19 +63,6 @@ func Install(metadata *Metadata) error {
 		return &InstallError{AppName: sanitizedName, Stage: "paths", Err: err}
 	}
 
-	// Create directories if they don't exist
-	if err := os.MkdirAll(appsDir, 0755); err != nil {
-		return &InstallError{AppName: sanitizedName, Stage: "mkdir", Err: err}
-	}
-
-	if err := os.MkdirAll(desktopDir, 0755); err != nil {
-		return &InstallError{AppName: sanitizedName, Stage: "mkdir", Err: err}
-	}
-
-	if err := os.MkdirAll(iconsDir, 0755); err != nil {
-		return &InstallError{AppName: sanitizedName, Stage: "mkdir", Err: err}
-	}
-
 	// Track created files for rollback on error
 	var createdFiles []string
 	cleanup := func() {
@@ -173,6 +72,10 @@ func Install(metadata *Metadata) error {
 	}
 
 	// Copy AppImage
+	if err := os.MkdirAll(filepath.Dir(targetAppImagePath), 0755); err != nil {
+		return &InstallError{AppName: sanitizedName, Stage: "mkdir", Err: err}
+	}
+
 	srcFile, err := os.Open(metadata.FilePath)
 	if err != nil {
 		return &InstallError{AppName: sanitizedName, Stage: "copy", Err: err}
@@ -192,7 +95,6 @@ func Install(metadata *Metadata) error {
 		return &InstallError{AppName: sanitizedName, Stage: "copy", Err: err}
 	}
 
-	// Set executable permissions
 	if err := os.Chmod(targetAppImagePath, 0755); err != nil {
 		cleanup()
 		return &InstallError{AppName: sanitizedName, Stage: "permissions", Err: err}
@@ -201,40 +103,41 @@ func Install(metadata *Metadata) error {
 	// Handle icon installation
 	var targetIconPath string
 	if metadata.Icon != nil && len(metadata.Icon.Data) > 0 {
-		iconExt := "." + metadata.Icon.Format
-		targetIconPath, err = GetIconPath(sanitizedName, iconExt)
-		if err != nil {
-			cleanup()
-			return &InstallError{AppName: sanitizedName, Stage: "icon", Err: err}
-		}
-
-		if err := os.WriteFile(targetIconPath, metadata.Icon.Data, 0644); err != nil {
-			// Don't fail installation if icon fails, just log and continue
-			targetIconPath = ""
-		} else {
-			createdFiles = append(createdFiles, targetIconPath)
+		targetIconPath, err = GetIconPath(sanitizedName, "."+metadata.Icon.Format)
+		if err == nil {
+			if err := os.MkdirAll(filepath.Dir(targetIconPath), 0755); err == nil {
+				if err := os.WriteFile(targetIconPath, metadata.Icon.Data, 0644); err == nil {
+					createdFiles = append(createdFiles, targetIconPath)
+				} else {
+					targetIconPath = ""
+				}
+			} else {
+				targetIconPath = ""
+			}
 		}
 	}
 
-	// Create modified desktop file
-	originalFilename := filepath.Base(metadata.FilePath)
+	// Create and write desktop file
 	modifiedDesktop, err := ModifyDesktopFile(
 		metadata.DesktopFileContent,
 		targetAppImagePath,
 		targetIconPath,
-		originalFilename,
+		filepath.Base(metadata.FilePath),
 	)
 	if err != nil {
 		cleanup()
 		return &InstallError{AppName: sanitizedName, Stage: "desktop", Err: err}
 	}
 
-	// Write desktop file
+	if err := os.MkdirAll(filepath.Dir(targetDesktopPath), 0755); err != nil {
+		cleanup()
+		return &InstallError{AppName: sanitizedName, Stage: "mkdir", Err: err}
+	}
+
 	if err := os.WriteFile(targetDesktopPath, modifiedDesktop, 0644); err != nil {
 		cleanup()
 		return &InstallError{AppName: sanitizedName, Stage: "desktop", Err: err}
 	}
-	createdFiles = append(createdFiles, targetDesktopPath)
 
 	return nil
 }
@@ -243,32 +146,25 @@ func Install(metadata *Metadata) error {
 func Uninstall(appName string) error {
 	sanitizedName := SanitizeAppName(appName)
 
-	// Verify app is installed
-	info, err := GetInstalledInfo(sanitizedName)
+	appImagePath, err := GetInstalledAppImagePath(sanitizedName)
 	if err != nil {
 		return err
 	}
-
-	// Remove AppImage
-	if info.InstalledPath != "" {
-		if err := os.Remove(info.InstalledPath); err != nil && !os.IsNotExist(err) {
-			return &InstallError{AppName: sanitizedName, Stage: "remove", Err: err}
-		}
+	if _, err := os.Stat(appImagePath); os.IsNotExist(err) {
+		return ErrNotInstalled
 	}
 
-	// Remove desktop file
-	if info.DesktopFilePath != "" {
-		if err := os.Remove(info.DesktopFilePath); err != nil && !os.IsNotExist(err) {
-			return &InstallError{AppName: sanitizedName, Stage: "remove", Err: err}
-		}
+	if err := os.Remove(appImagePath); err != nil {
+		return &InstallError{AppName: sanitizedName, Stage: "remove", Err: err}
 	}
 
-	// Remove icon (try all common extensions)
-	iconsDir, err := GetIconsPath()
-	if err == nil {
-		for _, ext := range []string{".png", ".svg", ".jpg", ".xpm"} {
-			iconPath := filepath.Join(iconsDir, sanitizedName+ext)
-			os.Remove(iconPath) // Ignore errors
+	if desktopPath, err := GetDesktopFilePath(sanitizedName); err == nil {
+		os.Remove(desktopPath)
+	}
+
+	for _, ext := range iconExtensions {
+		if path, err := GetIconPath(sanitizedName, ext); err == nil {
+			os.Remove(path)
 		}
 	}
 

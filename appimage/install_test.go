@@ -61,20 +61,16 @@ func TestIsInstalledPath(t *testing.T) {
 	}
 
 	// Test that different paths don't match
-	homeDir, err := GetApplicationsPath()
-	if err != nil {
-		t.Fatalf("Failed to get applications path: %v", err)
-	}
-
-	expectedPath := homeDir + "/test-app.AppImage"
-	differentPath := "/tmp/test-app.AppImage"
-
-	result = IsInstalledPath("test-app", differentPath)
+	result = IsInstalledPath("test-app", "/tmp/test-app.AppImage")
 	if result {
 		t.Error("Expected IsInstalledPath to return false for different path")
 	}
 
 	// Test that same path matches (even if file doesn't exist)
+	expectedPath, err := GetInstalledAppImagePath("test-app")
+	if err != nil {
+		t.Fatalf("Failed to get installed path: %v", err)
+	}
 	result = IsInstalledPath("test-app", expectedPath)
 	if !result {
 		t.Error("Expected IsInstalledPath to return true for matching path")
