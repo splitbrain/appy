@@ -75,7 +75,7 @@ go mod tidy
 ### AppImage Parsing Flow
 
 1. **Type Detection** (appimage.go): Checks magic bytes at offset 8 for "AI\x02" (Type 2) or "AI\x01" (Type 1, unsupported)
-2. **SquashFS Location** (appimage.go): Searches first 10MB for SquashFS magic bytes (0x68 0x73 0x71 0x73), collects all candidates, and uses the last one found
+2. **SquashFS Location** (appimage.go): Calculates the offset from the ELF header of the runtime (end of the section header table: e_shoff + e_shentsize * e_shnum) and verifies the SquashFS magic bytes (0x68 0x73 0x71 0x73) at that offset
 3. **SquashFS Mounting** (appimage.go): Creates io.SectionReader starting at detected offset
 4. **Desktop File Parsing** (appimage.go): Locates .desktop file in root directory, parses using gopkg.in/ini.v1
 5. **Icon Resolution** (icon.go): Multi-stage icon search:
@@ -160,7 +160,7 @@ The `--install` and `--uninstall` flags allow Appy to register itself as the def
 - Desktop file parsing prefers non-localized keys but falls back to localized variants (e.g., Name[de])
 - Icon search prioritizes larger icon sizes (256x256 > 128x128 > 64x64)
 - Image format detection uses magic bytes first, then falls back to file extension
-- SquashFS offset search returns the last candidate found (typically the correct one for Type 2 AppImages)
+- SquashFS offset comes from the ELF header, not from a search for magic bytes (the runtime and the compressed data can contain the magic bytes too)
 - Raw desktop file content is preserved in Metadata for installation use
 
 **Installation:**

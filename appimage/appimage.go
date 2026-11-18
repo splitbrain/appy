@@ -2,6 +2,7 @@ package appimage
 
 import (
 	"bytes"
+	"encoding/binary"
 	"io"
 	"io/fs"
 	"os"
@@ -149,56 +150,53 @@ func (p *Parser) detectType() error {
 	return ErrNotAppImage
 }
 
-// findSquashfsOffset searches for the SquashFS magic bytes
+// findSquashfsOffset calculates the SquashFS offset from the ELF header of the runtime.
+// The SquashFS image starts directly after the ELF section header table, which ends at
+// e_shoff + e_shentsize * e_shnum. Both 32-bit and 64-bit ELF files in either byte order
+// are supported. Returns ErrNoSquashFS if the header is invalid or the SquashFS magic
+// bytes are not found at the calculated offset.
 func (p *Parser) findSquashfsOffset() (int64, error) {
-	// SquashFS magic bytes: "hsqs" = 0x68 0x73 0x71 0x73
-	magic := []byte{0x68, 0x73, 0x71, 0x73}
-
-	buf := make([]byte, 4096)
-	maxSearchSize := int64(10 * 1024 * 1024) // Search first 10MB
-
-	// Collect all candidate offsets first
-	var candidates []int64
-	searchOffset := int64(0)
-	for searchOffset < maxSearchSize {
-		n, err := p.file.ReadAt(buf, searchOffset)
-		if err != nil && err != io.EOF {
-			return 0, err
-		}
-		if n == 0 {
-			break
-		}
-
-		// Search for all magic byte occurrences in current buffer
-		searchBuf := buf[:n]
-		for {
-			idx := bytes.Index(searchBuf, magic)
-			if idx == -1 {
-				break
-			}
-
-			candidateOffset := searchOffset + int64(len(buf[:n])-len(searchBuf)) + int64(idx)
-			candidates = append(candidates, candidateOffset)
-
-			// Move past this occurrence and continue searching
-			searchBuf = searchBuf[idx+4:]
-		}
-
-		// Move forward, but overlap by 3 bytes to catch magic bytes spanning chunks
-		if n >= 4 {
-			searchOffset += int64(n - 3)
-		} else {
-			searchOffset += int64(n)
-		}
+	header := make([]byte, 64)
+	if _, err := p.file.ReadAt(header, 0); err != nil {
+		return 0, ErrNoSquashFS
 	}
-
-	if len(candidates) == 0 {
+	if !bytes.Equal(header[:4], []byte("\x7fELF")) {
 		return 0, ErrNoSquashFS
 	}
 
-	// Return the last candidate (usually the correct one)
-	// We'll verify it works when we try to open it
-	return candidates[len(candidates)-1], nil
+	var order binary.ByteOrder
+	switch header[5] {
+	case 1:
+		order = binary.LittleEndian
+	case 2:
+		order = binary.BigEndian
+	default:
+		return 0, ErrNoSquashFS
+	}
+
+	var shoff int64
+	var shentsize, shnum uint16
+	switch header[4] {
+	case 1: // ELFCLASS32
+		shoff = int64(order.Uint32(header[0x20:]))
+		shentsize = order.Uint16(header[0x2E:])
+		shnum = order.Uint16(header[0x30:])
+	case 2: // ELFCLASS64
+		shoff = int64(order.Uint64(header[0x28:]))
+		shentsize = order.Uint16(header[0x3A:])
+		shnum = order.Uint16(header[0x3C:])
+	default:
+		return 0, ErrNoSquashFS
+	}
+	offset := shoff + int64(shentsize)*int64(shnum)
+
+	// SquashFS magic bytes: "hsqs" = 0x68 0x73 0x71 0x73
+	magic := make([]byte, 4)
+	if _, err := p.file.ReadAt(magic, offset); err != nil || !bytes.Equal(magic, []byte("hsqs")) {
+		return 0, ErrNoSquashFS
+	}
+
+	return offset, nil
 }
 
 // openSquashfs initializes the SquashFS reader at the detected offset
