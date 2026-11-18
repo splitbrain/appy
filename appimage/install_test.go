@@ -101,10 +101,10 @@ func TestGetDesktopFilePath(t *testing.T) {
 
 func TestGetIconPath(t *testing.T) {
 	tests := []struct {
-		name     string
-		appName  string
-		ext      string
-		wantExt  string
+		name    string
+		appName string
+		ext     string
+		wantExt string
 	}{
 		{"with dot prefix", "test-app", ".png", ".png"},
 		{"without dot prefix", "test-app", "svg", ".svg"},
