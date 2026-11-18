@@ -189,11 +189,8 @@ func TestCopyFile_Errors(t *testing.T) {
 }
 
 func TestInstall(t *testing.T) {
-	// Skip if we can't get home directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		t.Skip("Cannot get home directory")
-	}
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
 
 	tmpDir := t.TempDir()
 
@@ -223,11 +220,6 @@ Categories=Utility;`)
 	if err := Install(metadata); err != nil {
 		t.Fatalf("Install failed: %v", err)
 	}
-
-	// Cleanup after test
-	defer func() {
-		Uninstall("Test Install App")
-	}()
 
 	// Verify files were created
 	sanitizedName := SanitizeAppName("Test Install App")
@@ -268,10 +260,8 @@ func TestInstall_Validation(t *testing.T) {
 }
 
 func TestUninstall(t *testing.T) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		t.Skip("Cannot get home directory")
-	}
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
 
 	tmpDir := t.TempDir()
 
